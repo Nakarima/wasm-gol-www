@@ -1,12 +1,14 @@
 import { memory } from "wasm-gol/wasm_gol_bg";
 import { Universe, Cell } from "wasm-gol";
 
+// TODO: find way to config webpack for strong typing
+
 const CELL_SIZE = 10;
 const GRID_COLOR = "#CCCCCC";
 const DEAD_COLOR = "#FFFFFF";
 const ALIVE_COLOR = "#000000";
 
-const canvas: HTMLCanvasElement = document.getElementById("game-of-life-canvas") as any;
+const canvas = document.getElementById("game-of-life-canvas");
 const universe = Universe.new();
 const width = universe.width();
 const height = universe.height();
@@ -15,7 +17,7 @@ canvas.width = (CELL_SIZE + 1) * width + 1;
 
 const ctx = canvas.getContext('2d');
 
-const drawGrid = (ctx: CanvasRenderingContext2D) => {
+const drawGrid = () => {
   ctx.beginPath();
   ctx.strokeStyle = GRID_COLOR;
 
@@ -34,13 +36,20 @@ const drawGrid = (ctx: CanvasRenderingContext2D) => {
   ctx.stroke();
 };
 
-const getIndex = (row: number, column: number) => {
+const getIndex = (row, column) => {
   return row * width + column;
 };
 
-const drawCells = (ctx: CanvasRenderingContext2D) => {
+const bitIsSet = (n, arr) => {
+  const byte = Math.floor(n / 8);
+  const mask = 1 << (n % 8);
+  return (arr[byte] & mask) === mask;
+};
+
+
+const drawCells = () => {
   const cellsPtr = universe.cells();
-  const cells = new Uint8Array(memory.buffer, cellsPtr, width * height);
+  const cells = new Uint8Array(memory.buffer, cellsPtr, width * height / 8);
 
   ctx.beginPath();
 
@@ -48,9 +57,10 @@ const drawCells = (ctx: CanvasRenderingContext2D) => {
     for (let col = 0; col < width; col++) {
       const idx = getIndex(row, col);
 
-      ctx.fillStyle = cells[idx] === Cell.Dead
-        ? DEAD_COLOR
-        : ALIVE_COLOR;
+      // This is updated!
+      ctx.fillStyle = bitIsSet(idx, cells)
+        ? ALIVE_COLOR
+        : DEAD_COLOR;
 
       ctx.fillRect(
         col * (CELL_SIZE + 1) + 1,
@@ -67,8 +77,8 @@ const drawCells = (ctx: CanvasRenderingContext2D) => {
 const renderLoop = () => {
   universe.tick();
   if (ctx !== null && ctx !== undefined) {
-    drawGrid(ctx);
-    drawCells(ctx);
+    drawGrid();
+    drawCells();
     requestAnimationFrame(renderLoop);
   }
 };
